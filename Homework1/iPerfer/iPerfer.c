@@ -7,6 +7,8 @@
 #include <time.h>
 
 #define PACKET_LEN 1000
+#define MY_PORT 4758
+#define BACKLOG 15
 
 char data[PACKET_LEN];
 char fin[PACKET_LEN];
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
     handle_server_args(argv, &args);
   } else if (argc == 8) {
     handle_client_args(argv, &args);
+    run_client(args.server_hostname, args.server_port, args.duration);
   } else {
     printf("Error: missing or additional arguments\n");
     exit(1);
@@ -66,10 +69,16 @@ void run_client(char *host, char *port, int duration) {
     exit(1);
   }
 
+  // connect to server
+  if (connect(sock, res->ai_addr, res->ai_addrlen) == -1) {
+    printf("Connection Error\n");
+    exit(1);
+  }
+
   start_time = time(NULL);
   cur_time = time(NULL);
   while (cur_time - start_time < duration) {
-    // TODO
+    send(sock, data, PACKET_LEN, 0);
     kb_sent++;
     cur_time = time(NULL);
   }
