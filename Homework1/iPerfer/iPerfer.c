@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <netdb.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -5,6 +6,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <unistd.h>
 
 #define PACKET_LEN 1000
 #define MY_PORT 4758
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
 
   if (argc == 4) {
     handle_server_args(argv, &args);
+    run_server(args.listen_port);
   } else if (argc == 8) {
     handle_client_args(argv, &args);
     run_client(args.server_hostname, args.server_port, args.duration);
@@ -63,15 +66,15 @@ void run_client(char *host, char *port, int duration) {
     exit(1);
   }
 
-  if ((sock =
-           socket(res->ai_family, res->ai_socktype, res->ai_protocol) == -1)) {
-    printf("Socket Error\n");
+  if ((sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) ==
+      -1) {
+    perror("Socket:");
     exit(1);
   }
 
   // connect to server
   if (connect(sock, res->ai_addr, res->ai_addrlen) == -1) {
-    printf("Connection Error\n");
+    perror("Connection");
     exit(1);
   }
 
@@ -82,13 +85,66 @@ void run_client(char *host, char *port, int duration) {
     kb_sent++;
     cur_time = time(NULL);
   }
-  // SEND FIN
+  send(sock, fin, PACKET_LEN, 0);
   // GET ACK
   measured_time = time(NULL) - start_time;
   freeaddrinfo(res);
+  close(sock);
 }
 
-void run_server(char *port) {}
+void run_server(char *port) {
+  int status;
+  int sock;
+  struct addrinfo hints;
+  struct addrinfo *res;
+  struct sockaddr_storage their_addr;
+  unsigned int kb_rec = 0;
+  time_t end_time;
+  time_t start_time;
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  if ((status = getaddrinfo(NULL, port, &hints, &res)) != 0) {
+    printf("getaddrinfo error: %s\n", gai_strerror(status));
+    exit(1);
+  }
+
+  if ((sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) ==
+      -1) {
+    perror("Socket");
+    exit(1);
+  }
+
+  if (bind(sock, res->ai_addr, res->ai_addrlen) == -1) {
+    perror("Bind");
+    exit(1);
+  }
+
+  if (listen(sock, BACKLOG) == -1) {
+    perror("Backlog");
+    exit(1);
+  }
+
+  socklen_t addr_size = sizeof their_addr;
+  int new_fd = accept(sock, (struct sockaddr *)&their_addr, &addr_size);
+
+  start_time = time(NULL);
+  do {
+    recv(new_fd, (void *)data, PACKET_LEN, 0);
+    kb_rec++;
+  } while (data[0] != 1);
+  end_time = time(NULL);
+
+  // TODO SEND ACK
+
+  float mbps = (kb_rec / (end_time - start_time)) / 1000.0;
+  printf("recieved=%d KB rate=%.3f Mbps\n", kb_rec, mbps);
+  freeaddrinfo(res);
+  close(sock);
+}
 
 void handle_server_args(char *argv[], struct arguments *args) {
   if (strcmp(argv[1], "-s") != 0) {
@@ -104,7 +160,7 @@ void handle_server_args(char *argv[], struct arguments *args) {
     printf("Error: port number must be in the range 1024 to 65535\n");
     exit(1);
   }
-  args->listen_port = listen_port;
+  args->listen_port = argv[3];
 }
 
 void handle_client_args(char *argv[], struct arguments *args) {
