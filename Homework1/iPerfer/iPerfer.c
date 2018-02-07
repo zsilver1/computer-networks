@@ -86,8 +86,10 @@ void run_client(char *host, char *port, int duration) {
     cur_time = time(NULL);
   }
   send(sock, fin, PACKET_LEN, 0);
-  // GET ACK
+  recv(sock, data, PACKET_LEN, 0);
   measured_time = time(NULL) - start_time;
+  float mbps = (kb_sent / measured_time) / 1000.0;
+  printf("sent=%d KB rate=%.3f Mbps\n", kb_sent, mbps);
   freeaddrinfo(res);
   close(sock);
 }
@@ -136,9 +138,11 @@ void run_server(char *port) {
     recv(new_fd, (void *)data, PACKET_LEN, 0);
     kb_rec++;
   } while (data[0] != 1);
-  end_time = time(NULL);
 
-  // TODO SEND ACK
+  send(new_fd, ack, PACKET_LEN, 0);
+  end_time = time(NULL);
+  // remove last kb because it was fin packet
+  kb_rec--;
 
   float mbps = (kb_rec / (end_time - start_time)) / 1000.0;
   printf("recieved=%d KB rate=%.3f Mbps\n", kb_rec, mbps);
