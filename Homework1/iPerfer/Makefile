@@ -1,5 +1,5 @@
-CFLAGS = -Wall
-CC = gcc
+CFLAGS=-Wall
+
 SRC=$(wildcard *.c)
 iPerfer: $(SRC)
-		CC -o $@ $^ $(CFLAGS)
+		gcc -o $@ $^ $(CFLAGS)
