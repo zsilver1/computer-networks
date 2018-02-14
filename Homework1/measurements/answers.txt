@@ -1,23 +1,32 @@
-2)    Predicted throughput:
-      Predicted latency: 140 ms
-      Actual throughput:
-      Actual latency: 
-      Explanation of results:
+2)    Predicted throughput: 17.68 Mbps
+      Predicted latency: 123.6 ms
+      Actual throughput: 17.68 Mbps
+      Actual latency: 122.839
+      Explanation of results: The predicted latency I calculated from the latencies between each of the of links
+                              between h1 and h10. I predcited that the throughput would be the minimum throughput
+                              of the links between h1 and h10.
 
-3.1)  Predicted throughput:
-      Predicted latency:
-      Actual throughput: 1.279
+3.1)  Predicted throughput: 8.84
+      Predicted latency: 123.6
+      Actual throughput: 10.232
       Actual latency: 123
-      Explanation of results:
+      Explanation of results: I predicted that the throughput would be about halved from Q2, and I predicted that
+                              the latency would be unchanged.
 
-3.2)  Predicted throughput:
-      Predicted latency:
-      Actual throughput: 0.73 Mbps
+3.2)  Predicted throughput: 5.89
+      Predicted latency: 123.6
+      Actual throughput: 5.84
       Actual latency: 123
-      Explanation of results:
+      Explanation of results: I predicted that the throughput would be about a third of that from from Q2, and 
+                              I predicted that the latency would be unchanged.
 
-4)    Predicted throughput:
-      Predicted latency:
-      Actual throughput:
-      Actual latency:
-      Explanation of results:
+4)    Predicted throughput: h3-h8 throughput of 16.6, h1-h10 throughput of 8.3
+      Predicted latency: h3-h8 latency of 31, h1-h10 latency of 122
+      Actual throughput: h3-h8 throughput of 16.656 Mbps, h1-h10 throughput of 7.584 Mbps
+      Actual latency: h3-h8 latency of 32, h1-h10 latency of 122
+      Explanation of results: I predicted the throughput of h3-h8 would be about double that of h1-h10, and
+                              I predicted that they would add up to about 25 because of L4's bandwidth. h3-h8
+                              has a higher throughput, because it only has to travel through L2 before it gets
+                              to L4, whereas the other path goes through L1 and L2, and L1 has a much lower
+                              bandwidth. I predicted that the latencies would simply be the sum of the latencies
+                              of the links of each of the paths.

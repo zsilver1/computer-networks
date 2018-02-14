@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #define PACKET_LEN 1000
-#define MY_PORT 4758
 #define BACKLOG 15
 
 char data[PACKET_LEN];
@@ -88,7 +87,7 @@ void run_client(char *host, char *port, int duration) {
   send(sock, fin, PACKET_LEN, 0);
   recv(sock, data, PACKET_LEN, 0);
   measured_time = time(NULL) - start_time;
-  float mbps = (kb_sent / measured_time) / 1000.0;
+  float mbps = (kb_sent / measured_time) / 1000.0 * 8;
   printf("sent=%d KB rate=%.3f Mbps\n", kb_sent, mbps);
   freeaddrinfo(res);
   close(sock);
@@ -144,7 +143,7 @@ void run_server(char *port) {
   // remove last kb because it was fin packet
   kb_rec--;
 
-  float mbps = (kb_rec / (end_time - start_time)) / 1000.0;
+  float mbps = (kb_rec / (end_time - start_time)) / 1000.0 * 8;
   printf("recieved=%d KB rate=%.3f Mbps\n", kb_rec, mbps);
   freeaddrinfo(res);
   close(sock);
