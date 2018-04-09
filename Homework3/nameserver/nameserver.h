@@ -1,5 +1,6 @@
 #ifndef NAMESERVER_H
 #define NAMESERVER_H
+#include "graph.h"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -11,6 +12,7 @@ private:
   std::ofstream logfile;
   std::ifstream servers;
   std::vector<std::string> server_ip_list;
+  std::vector<Node *> graph;
   void parse_rr_servers();
   void parse_geo_servers();
 
@@ -23,6 +25,9 @@ public:
   ~Nameserver() {
     this->logfile.close();
     this->servers.close();
+    for (Node *n : graph) {
+      delete n;
+    }
   }
   void run();
 };
