@@ -15,6 +15,7 @@ private:
   std::vector<Node *> graph;
   void parse_rr_servers();
   void parse_geo_servers();
+  void log(char *client_ip, char *query_name, std::string response_ip);
 
 public:
   Nameserver(char *port, bool geo_based, char *servers, char *logfile)

@@ -12,3 +12,13 @@ std::ostream &operator<<(std::ostream &os, const Node &n) {
      << n.outgoing.size() << " outgoing, " << n.type << ", " << n.ip_addr;
   return os;
 }
+
+std::string Node::get_closest_server(std::vector<Node *> &graph,
+                                     char *source_ip) {
+  // TEMPORARY
+  for (Node *n : graph) {
+    if (n->type == SERVER) {
+      return n->ip_addr;
+    }
+  }
+}

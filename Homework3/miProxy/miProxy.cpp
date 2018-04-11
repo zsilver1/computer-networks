@@ -2,8 +2,10 @@
 #include "../nameserver/DNSHeader.h"
 #include "../nameserver/DNSQuestion.h"
 #include "../nameserver/DNSRecord.h"
+#include <arpa/inet.h>
 
 int main(int argc, char const *argv[]) {
+  int one = 1;
   if (argc < 5) {
     perror("Usage: ./miProxy <log> <alpha> <listen-port> <dns-ip> <dns-port> "
            "[<www-ip>]");
@@ -16,15 +18,18 @@ int main(int argc, char const *argv[]) {
   int listen_port = atoi(argv[3]);
   char *dns_ip = (char *)argv[4];
   char *dns_port = (char *)argv[5];
+  bool need_dns = false;
   char *www_ip;
   if (argc == 7) {
     www_ip = (char *)argv[6];
   } else {
-    www_ip = "video.cs.jhu.edu";
+    www_ip = (char *)"video.cs.jhu.edu";
+    need_dns = true;
   }
 
   /* Create a socket */
   int sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
   if (sockfd < 0) {
     printf("%s %d\n", __FUNCTION__, __LINE__);
     perror("socket");
@@ -68,6 +73,9 @@ int main(int argc, char const *argv[]) {
   ofstream log_out(log_path, ofstream::out);
 
   while (true) {
+    struct sockaddr_storage client_addr;
+    socklen_t len = sizeof(client_addr);
+    char ipstr[INET6_ADDRSTRLEN];
     // Set up the readSet
     FD_ZERO(&readSet);
     FD_SET(sockfd, &readSet);
@@ -86,13 +94,18 @@ int main(int argc, char const *argv[]) {
     assert(err != -1);
 
     if (FD_ISSET(sockfd, &readSet)) {
-      int clientsd = accept(sockfd, NULL, NULL);
+      int clientsd = accept(sockfd, (struct sockaddr *)&client_addr, &len);
+
       if (clientsd == -1) {
         printf("%s %d\n", __FUNCTION__, __LINE__);
         cout << "Error on accept" << endl;
       } else {
+        // get ip address of client
+        struct sockaddr_in *s = (struct sockaddr_in *)&client_addr;
+        inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
+
         fds.push_back(clientsd);
-        printf("client: %d\n", clientsd);
+        // printf("client: %d\n", clientsd);
       }
     }
 
@@ -173,10 +186,20 @@ int main(int argc, char const *argv[]) {
               }
             }
           }
+          // CONNECT TO DNS
+          const char *server_ip;
+          if (need_dns) {
+            printf("GETTING SERVER IP\n");
+            server_ip = get_server_ip(1, ipstr, dns_ip, dns_port).data();
+          } else {
+            // TODO FIXME
+            server_ip = www_ip;
+          }
 
           /* Start send request to the server */
           /* Create a socket */
           int server_sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+          setsockopt(server_sd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
           if (server_sd < 0) {
             printf("%s %d\n", __FUNCTION__, __LINE__);
             perror("socket");
@@ -184,10 +207,10 @@ int main(int argc, char const *argv[]) {
           }
 
           /* Connect */
-          struct hostent *host = gethostbyname(www_ip);
+          // struct hostent *host = gethostbyname(www_ip);
           struct sockaddr_in server_addr;
           server_addr.sin_family = AF_INET;
-          server_addr.sin_addr.s_addr = *(unsigned long *)host->h_addr_list[0];
+          server_addr.sin_addr.s_addr = *(unsigned long *)server_ip;
           server_addr.sin_port = htons(80);
           int ret = connect(server_sd, (const struct sockaddr *)&server_addr,
                             sizeof(server_addr));
@@ -310,12 +333,38 @@ int main(int argc, char const *argv[]) {
   return 0;
 }
 
-string get_server_ip(int query_type, char *www_ip) {
-  int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  struct sockaddr_in dest;
+string get_server_ip(int query_type, char *www_ip, char *dns_ip,
+                     char *dns_port) {
+  int one = 1;
+  struct addrinfo hints;
+  struct addrinfo *res, *p;
+  int sock;
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+  getaddrinfo(dns_ip, dns_port, &hints, &res);
+  // loop through all the results and make a socket
+  for (p = res; p != NULL; p = p->ai_next) {
+    if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+      perror("talker: socket");
+      continue;
+    }
+    break;
+  }
+  if (p == NULL) {
+    fprintf(stderr, "talker: failed to create socket\n");
+  }
+
+  // int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
+  // bind(sock, res->ai_addr, res->ai_addrlen);
+  freeaddrinfo(res);
+
   DNSHeader qh;
   DNSQuestion question;
   DNSRecord qr;
+  char buffer[10000];
   qh.ID = (ushort)getpid();
   qh.QR = false;
   qh.OPCODE = 0;
@@ -330,10 +379,22 @@ string get_server_ip(int query_type, char *www_ip) {
   qh.NSCOUNT = 0;
   qh.ARCOUNT = 0;
 
-  convert_to_dns_name(www_ip);
-  strcpy(question.QNAME, www_ip);
+  char *dns_name;
+  // convert_to_dns_name(dns_name, www_ip);
+  dns_name = "5video2cs3jhu3edu";
+  strcpy(question.QNAME, dns_name);
   question.QCLASS = 1;
   question.QTYPE = query_type;
+
+  memcpy(buffer, (void *)&qh, sizeof(DNSHeader));
+  memcpy(buffer + sizeof(DNSHeader), (void *)&question, sizeof(DNSQuestion));
+
+  printf("SENDING\n");
+  if (sendto(sock, buffer, sizeof(DNSHeader) + sizeof(DNSQuestion), 0,
+             p->ai_addr, p->ai_addrlen) == -1) {
+    perror("sendto failure");
+  }
+  return "testing";
 }
 
 /* Extract the video chunk name from request */
@@ -387,14 +448,20 @@ string recv_response(int server_sd) {
   return data;
 }
 
-void convert_to_dns_name(char *domain) {
-  int count = 0;
-  for (int i = 0; i < strlen(domain); i++) {
-    if (domain[i] == '.') {
-      domain[i] = count + 48;
-      count = 0;
-    }
-    count++;
-  }
-  printf("NEW DOMAIN: %s\n", domain);
+// mostly taken from reference version on github
+void convert_to_dns_name(char *dns, char *host) {
+  // int n = 0, i;
+  // strcat((char *)host, ".");
+
+  // for (i = 0; i < strlen((char *)host); i++) {
+  //   if (host[i] == '.') {
+  //     *dns++ = i - n;
+  //     for (; n < i; n++) {
+  //       *dns++ = host[n];
+  //     }
+  //     n++;
+  //   }
+  // }
+  // *dns++ = '\0';
+  dns = "5video2cs3jhu3edu";
 }
