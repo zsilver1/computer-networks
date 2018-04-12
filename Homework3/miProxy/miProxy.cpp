@@ -162,7 +162,10 @@ int main(int argc, char const *argv[]) {
 
             if (throughput_map.find(cur_fd) != throughput_map.end()) {
               int chosen_bitrate;
-              int last_bitrate = bitrate_vector.front();
+              int last_bitrate = 1;
+              if (bitrate_vector.size() != 0) {
+                last_bitrate = bitrate_vector.front();
+              }
 
               for (int b : bitrate_vector) {
                 if (b <= (throughput_map[cur_fd] / 1.5))
@@ -189,16 +192,21 @@ int main(int argc, char const *argv[]) {
           // CONNECT TO DNS
           const char *server_ip;
           if (need_dns) {
-            printf("GETTING SERVER IP\n");
             server_ip = get_server_ip(1, ipstr, dns_ip, dns_port).data();
           } else {
-            // TODO FIXME
             server_ip = www_ip;
           }
 
           /* Start send request to the server */
           /* Create a socket */
-          int server_sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+          struct addrinfo hints, *res;
+          memset(&hints, 0, sizeof hints);
+          hints.ai_family = AF_UNSPEC;
+          hints.ai_socktype = SOCK_STREAM;
+          getaddrinfo(server_ip, "80", &hints, &res);
+
+          int server_sd =
+              socket(res->ai_family, res->ai_socktype, res->ai_protocol);
           setsockopt(server_sd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
           if (server_sd < 0) {
             printf("%s %d\n", __FUNCTION__, __LINE__);
@@ -208,12 +216,9 @@ int main(int argc, char const *argv[]) {
 
           /* Connect */
           // struct hostent *host = gethostbyname(www_ip);
-          struct sockaddr_in server_addr;
-          server_addr.sin_family = AF_INET;
-          server_addr.sin_addr.s_addr = *(unsigned long *)server_ip;
-          server_addr.sin_port = htons(80);
-          int ret = connect(server_sd, (const struct sockaddr *)&server_addr,
-                            sizeof(server_addr));
+
+          int ret = connect(server_sd, res->ai_addr, res->ai_addrlen);
+          freeaddrinfo(res);
           if (ret < 0) {
             printf("%s %d\n", __FUNCTION__, __LINE__);
             perror("connect");
@@ -223,6 +228,7 @@ int main(int argc, char const *argv[]) {
           }
 
           /* Send */
+          printf("%s\n", request.data());
           if (send(server_sd, request.c_str(), request.size(), 0) < 0) {
             printf("%s %d\n", __FUNCTION__, __LINE__);
             perror("send");
@@ -256,7 +262,7 @@ int main(int argc, char const *argv[]) {
               int br =
                   atoi(response.substr(fst_index + 1, snd_index - fst_index - 1)
                            .c_str());
-              bool new_br;
+              bool new_br = true;
               for (int b : bitrate_vector) {
                 if (br == b) {
                   new_br = false;
@@ -303,11 +309,13 @@ int main(int argc, char const *argv[]) {
             double duration =
                 t2.tv_sec - t1.tv_sec + (t2.tv_usec - t1.tv_usec) / 1000000.0;
             double t_new = (content_len / 1000) / duration * 8;
-            double t_cur;
-            if (throughput_map.find(cur_fd) == throughput_map.end())
-              t_cur = bitrate_vector.front();
-            else
-              t_cur = throughput_map[cur_fd];
+            double t_cur = 1;
+            if (bitrate_vector.size() != 0) {
+              if (throughput_map.find(cur_fd) == throughput_map.end())
+                t_cur = bitrate_vector.front();
+              else
+                t_cur = throughput_map[cur_fd];
+            }
 
             t_cur = alpha * t_new + (1 - alpha) * t_cur;
             throughput_map[cur_fd] = t_cur;
@@ -381,7 +389,7 @@ string get_server_ip(int query_type, char *www_ip, char *dns_ip,
 
   char *dns_name;
   // convert_to_dns_name(dns_name, www_ip);
-  dns_name = "5video2cs3jhu3edu";
+  dns_name = (char *)"5video2cs3jhu3edu";
   strcpy(question.QNAME, dns_name);
   question.QCLASS = 1;
   question.QTYPE = query_type;
@@ -389,12 +397,18 @@ string get_server_ip(int query_type, char *www_ip, char *dns_ip,
   memcpy(buffer, (void *)&qh, sizeof(DNSHeader));
   memcpy(buffer + sizeof(DNSHeader), (void *)&question, sizeof(DNSQuestion));
 
-  printf("SENDING\n");
   if (sendto(sock, buffer, sizeof(DNSHeader) + sizeof(DNSQuestion), 0,
              p->ai_addr, p->ai_addrlen) == -1) {
     perror("sendto failure");
   }
-  return "testing";
+
+  memset(buffer, 0, 10000);
+  recvfrom(sock, buffer, 10000, 0, p->ai_addr, &(p->ai_addrlen));
+  DNSHeader dh;
+  DNSRecord dr;
+  memcpy(&dh, buffer, sizeof(DNSHeader));
+  memcpy(&dr, buffer + sizeof(DNSHeader), sizeof(DNSRecord));
+  return std::string(dr.RDATA);
 }
 
 /* Extract the video chunk name from request */
@@ -448,20 +462,20 @@ string recv_response(int server_sd) {
   return data;
 }
 
-// mostly taken from reference version on github
-void convert_to_dns_name(char *dns, char *host) {
-  // int n = 0, i;
-  // strcat((char *)host, ".");
+// // mostly taken from reference version on github
+// void convert_to_dns_name(char *dns, char *host) {
+//   int n = 0, i;
+//   strcat((char *)host, ".");
 
-  // for (i = 0; i < strlen((char *)host); i++) {
-  //   if (host[i] == '.') {
-  //     *dns++ = i - n;
-  //     for (; n < i; n++) {
-  //       *dns++ = host[n];
-  //     }
-  //     n++;
-  //   }
-  // }
-  // *dns++ = '\0';
-  dns = "5video2cs3jhu3edu";
-}
+//   for (i = 0; i < strlen((char *)host); i++) {
+//     if (host[i] == '.') {
+//       *dns++ = i - n;
+//       for (; n < i; n++) {
+//         *dns++ = host[n];
+//       }
+//       n++;
+//     }
+//   }
+//   *dns++ = '\0';
+//   dns = "5video2cs3jhu3edu";
+// }

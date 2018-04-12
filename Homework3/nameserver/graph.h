@@ -25,12 +25,12 @@ public:
   std::string ip_addr;
   NodeType type;
   int id;
-  int distance_to = -1;
+  int distance_to = 1000000;
 
   void add_link(Node *other, std::string &cost);
   friend std::ostream &operator<<(std::ostream &os, const Node &n);
   static std::string get_closest_server(std::vector<Node *> &graph,
-                                        char *source_ip);
+                                        char *source_ip, bool geo_based);
 };
 
 #endif

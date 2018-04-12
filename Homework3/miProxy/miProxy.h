@@ -25,4 +25,4 @@ string get_server_ip(int query_type, char *www_ip, char *dns_ip,
 string get_value(string str, string key);
 string recv_response(int server_sd);
 string get_chunkname(string request);
-void convert_to_dns_name(char *dns, char *host);
+// void convert_to_dns_name(char *dns, char *host);
