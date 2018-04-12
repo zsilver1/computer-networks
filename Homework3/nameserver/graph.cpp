@@ -1,5 +1,6 @@
 #include "graph.h"
 #include <iostream>
+#include <limits>
 #include <set>
 #include <string.h>
 
@@ -17,11 +18,13 @@ std::ostream &operator<<(std::ostream &os, const Node &n) {
 }
 
 void dijkstra(int start_index, std::vector<Node *> &graph) {
+  int inf = std::numeric_limits<int>::infinity();
   std::set<Node *> set;
   for (Node *n : graph) {
     set.insert(n);
   }
   graph[start_index]->distance_to = 0;
+  set.erase(graph[start_index]);
   while (!set.empty()) {
     int min_dist = 10000000;
     int min_index;
@@ -34,6 +37,7 @@ void dijkstra(int start_index, std::vector<Node *> &graph) {
     set.erase(graph[min_index]);
     for (int i = 0; i < graph[min_index]->outgoing.size(); i++) {
       int alt = min_dist + graph[min_index]->outgoing_distances[i];
+      printf("ALT: %d\n", alt);
       if (alt < graph[min_index]->outgoing[i]->distance_to) {
         graph[min_index]->outgoing[i]->distance_to = alt;
       }
@@ -44,23 +48,22 @@ void dijkstra(int start_index, std::vector<Node *> &graph) {
 std::string Node::get_closest_server(std::vector<Node *> &graph,
                                      char *source_ip, bool geo_based,
                                      std::vector<std::string> &ip_list) {
+  int inf = std::numeric_limits<int>::infinity();
   if (geo_based) {
     for (int i = 0; i < graph.size(); i++) {
       if (strcmp(source_ip, graph[i]->ip_addr.c_str())) {
         dijkstra(i, graph);
       }
     }
-    int min_dist = 100000;
+    int min_dist = 10000000;
     Node *min_node;
     for (Node *n : graph) {
-      // printf("DISTANCE: %d\nIP: %s\n----\n", n->distance_to,
-      // n->ip_addr.c_str());
       if (n->type == SERVER && n->distance_to < min_dist) {
         min_dist = n->distance_to;
         min_node = n;
       }
     }
-    std::cout << min_node->ip_addr << "\n";
+    std::cout << min_node->distance_to << "\n";
     return min_node->ip_addr;
   } else {
     // ROUND ROBIN

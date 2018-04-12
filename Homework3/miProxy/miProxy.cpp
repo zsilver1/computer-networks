@@ -3,6 +3,7 @@
 #include "../nameserver/DNSQuestion.h"
 #include "../nameserver/DNSRecord.h"
 #include <arpa/inet.h>
+#include <set>
 
 int main(int argc, char const *argv[]) {
   int one = 1;
@@ -13,6 +14,9 @@ int main(int argc, char const *argv[]) {
   }
 
   /* Parse cmd arguments */
+  std::set<string> seen_ips;
+  char server_ip[100];
+  memset(server_ip, 0, 100);
   char *log_path = (char *)argv[1];
   float alpha = atof(argv[2]);
   int listen_port = atoi(argv[3]);
@@ -190,11 +194,16 @@ int main(int argc, char const *argv[]) {
             }
           }
           // CONNECT TO DNS
-          const char *server_ip;
-          if (need_dns) {
-            server_ip = get_server_ip(1, ipstr, dns_ip, dns_port).data();
-          } else {
-            server_ip = www_ip;
+          if (seen_ips.count(std::string(ipstr)) == 0) {
+            memset(server_ip, 0, 100);
+            if (need_dns) {
+              printf("CONNECTING TO DNS\n");
+              strcpy(server_ip,
+                     get_server_ip(1, ipstr, dns_ip, dns_port).c_str());
+              seen_ips.insert(std::string(ipstr));
+            } else {
+              strcpy(server_ip, www_ip);
+            }
           }
 
           /* Start send request to the server */
@@ -203,7 +212,6 @@ int main(int argc, char const *argv[]) {
           memset(&hints, 0, sizeof hints);
           hints.ai_family = AF_UNSPEC;
           hints.ai_socktype = SOCK_STREAM;
-          printf("SERVER: %s\n", server_ip);
           getaddrinfo(server_ip, "80", &hints, &res);
 
           int server_sd =
@@ -410,6 +418,7 @@ string get_server_ip(int query_type, char *www_ip, char *dns_ip,
   DNSRecord dr;
   memcpy(&dh, buffer, sizeof(DNSHeader));
   memcpy(&dr, buffer + sizeof(DNSHeader), sizeof(DNSRecord));
+  printf("CHOSEN IP: %s\n", dr.RDATA);
   return std::string(dr.RDATA);
 }
 

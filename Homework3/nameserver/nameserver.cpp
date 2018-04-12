@@ -134,6 +134,7 @@ void Nameserver::run() {
     std::string response_ip = Node::get_closest_server(
         this->graph, client_addr_str, this->geo_based, this->server_ip_list);
     // only log once
+    std::cout << "CHOSEN SERVER: " << response_ip << "\n";
     this->log(client_addr_str, dq.QNAME, response_ip);
     // SEND DNS RESPONSE WITH SERVER IP ADDRESS
     DNSHeader answer_h;
