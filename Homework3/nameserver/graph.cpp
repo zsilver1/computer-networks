@@ -42,9 +42,8 @@ void dijkstra(int start_index, std::vector<Node *> &graph) {
 }
 
 std::string Node::get_closest_server(std::vector<Node *> &graph,
-                                     char *source_ip, bool geo_based) {
-  static Node *last;
-  // TEMPORARY
+                                     char *source_ip, bool geo_based,
+                                     std::vector<std::string> &ip_list) {
   if (geo_based) {
     for (int i = 0; i < graph.size(); i++) {
       if (strcmp(source_ip, graph[i]->ip_addr.c_str())) {
@@ -65,12 +64,9 @@ std::string Node::get_closest_server(std::vector<Node *> &graph,
     return min_node->ip_addr;
   } else {
     // ROUND ROBIN
-    for (Node *n : graph) {
-      if (n->type == SERVER && n != last) {
-        last = n;
-        return n->ip_addr;
-      }
-    }
+    std::string ip = ip_list.back();
+    ip_list.pop_back();
+    ip_list.insert(ip_list.begin(), ip);
+    return ip;
   }
-  return last->ip_addr;
 }

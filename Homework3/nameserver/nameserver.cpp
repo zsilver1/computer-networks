@@ -116,7 +116,6 @@ void Nameserver::run() {
 
   /* Run server until terminated */
   // bool first_time = true;
-  printf("HERE1\n");
   while (true) {
     int n = recvfrom(sockfd, buffer, 10000, 0, (struct sockaddr *)&sender,
                      &sendsize);
@@ -132,8 +131,8 @@ void Nameserver::run() {
     memcpy(&dh, buffer, sizeof(DNSHeader));
     memcpy(&dq, buffer + sizeof(DNSHeader), sizeof(DNSQuestion));
 
-    std::string response_ip =
-        Node::get_closest_server(this->graph, client_addr_str, this->geo_based);
+    std::string response_ip = Node::get_closest_server(
+        this->graph, client_addr_str, this->geo_based, this->server_ip_list);
     // only log once
     this->log(client_addr_str, dq.QNAME, response_ip);
     // SEND DNS RESPONSE WITH SERVER IP ADDRESS
@@ -146,6 +145,7 @@ void Nameserver::run() {
     memcpy(buffer + sizeof(DNSHeader), &answer_rec, sizeof(DNSRecord));
     sendto(sockfd, buffer, 1000, 0, (struct sockaddr *)&sender, sendsize);
   }
+  close(sockfd);
 }
 
 int main(int argc, char **argv) {

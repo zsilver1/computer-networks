@@ -30,7 +30,8 @@ public:
   void add_link(Node *other, std::string &cost);
   friend std::ostream &operator<<(std::ostream &os, const Node &n);
   static std::string get_closest_server(std::vector<Node *> &graph,
-                                        char *source_ip, bool geo_based);
+                                        char *source_ip, bool geo_based,
+                                        std::vector<std::string> &ip_list);
 };
 
 #endif

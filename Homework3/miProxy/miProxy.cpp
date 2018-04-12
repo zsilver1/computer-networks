@@ -203,16 +203,18 @@ int main(int argc, char const *argv[]) {
           memset(&hints, 0, sizeof hints);
           hints.ai_family = AF_UNSPEC;
           hints.ai_socktype = SOCK_STREAM;
+          printf("SERVER: %s\n", server_ip);
           getaddrinfo(server_ip, "80", &hints, &res);
 
           int server_sd =
               socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-          setsockopt(server_sd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
           if (server_sd < 0) {
             printf("%s %d\n", __FUNCTION__, __LINE__);
             perror("socket");
+            close(server_sd);
             return -1;
           }
+          setsockopt(server_sd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
           /* Connect */
           // struct hostent *host = gethostbyname(www_ip);
