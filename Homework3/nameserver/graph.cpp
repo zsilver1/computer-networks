@@ -24,7 +24,6 @@ void dijkstra(int start_index, std::vector<Node *> &graph) {
     set.insert(n);
   }
   graph[start_index]->distance_to = 0;
-  set.erase(graph[start_index]);
   while (!set.empty()) {
     int min_dist = 10000000;
     int min_index;
@@ -35,9 +34,9 @@ void dijkstra(int start_index, std::vector<Node *> &graph) {
       }
     }
     set.erase(graph[min_index]);
+    // std::cout << *graph[min_index] << "\n";
     for (int i = 0; i < graph[min_index]->outgoing.size(); i++) {
       int alt = min_dist + graph[min_index]->outgoing_distances[i];
-      printf("ALT: %d\n", alt);
       if (alt < graph[min_index]->outgoing[i]->distance_to) {
         graph[min_index]->outgoing[i]->distance_to = alt;
       }
@@ -53,6 +52,7 @@ std::string Node::get_closest_server(std::vector<Node *> &graph,
     for (int i = 0; i < graph.size(); i++) {
       if (strcmp(source_ip, graph[i]->ip_addr.c_str())) {
         dijkstra(i, graph);
+        break;
       }
     }
     int min_dist = 10000000;
