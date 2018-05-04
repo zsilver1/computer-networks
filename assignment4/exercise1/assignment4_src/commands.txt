@@ -1,0 +1,2 @@
+table_set_default tbl route;
+table_add tbl _drop 0 =>

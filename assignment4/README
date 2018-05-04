@@ -1,0 +1,20 @@
+The format of my submission is:
+
+assignment4/
+  exercise1/
+    assignment4_src/
+      commands.txt
+      p4src/
+        source_routing.p4
+  exercise2/
+    assignment4_src/
+      commands.txt
+      kv.py
+      recieve.py
+      p4src/
+        source_routing.p4
+
+
+In order to run part 2, open two terminals on h1, and run recieve.py on one
+and kv.py on the other. kv.py will allow you to enter commands, and the responses
+from the switch will be printed by recieve.py on the other terminal.

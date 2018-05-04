@@ -1,0 +1,3 @@
+table_set_default tbl _drop
+table_add tbl put_request 1 =>
+table_add tbl get_request 0 =>
